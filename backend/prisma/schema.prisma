@@ -1,0 +1,30 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Session {
+  id            String   @id @default(cuid())
+  clerkUserId   String
+  question      String
+  transcript    String
+  score         Int
+  improvements  String
+  exampleAnswer String
+  category      String
+  difficulty    String
+  createdAt     DateTime @default(now())
+}
+
+model UserPreferences {
+  id                  String   @id @default(cuid())
+  clerkUserId         String   @unique
+  preferredDifficulty String   @default("Medium")
+  preferredCategories String   @default("[]")
+  showHints           Boolean  @default(true)
+  darkMode            Boolean  @default(true)
+  updatedAt           DateTime @updatedAt
+}

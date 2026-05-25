@@ -1,24 +1,21 @@
-// backend/src/recordings/analyze.controller.ts
-//
-// This is a NEW controller just for AI analysis.
-// Keep it separate from your recordings controller — different responsibility.
-
 import {
-  Controller,
-  Post,
   Body,
+  Controller,
   HttpException,
   HttpStatus,
+  Post,
 } from "@nestjs/common";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import Groq from "groq-sdk";
+import { PrismaService } from "../prisma.service";
 
-// This is the shape of data the frontend must send us
 interface AnalyzeRequestDto {
   question: string;
   transcript: string;
+  clerkUserId?: string;
+  category?: string;
+  difficulty?: string;
 }
 
-// This is the shape we always send back to the frontend
 interface AnalyzeResponseDto {
   score: number;
   improvements: string[];
@@ -27,14 +24,16 @@ interface AnalyzeResponseDto {
 
 @Controller("api")
 export class AnalyzeController {
-  // Instantiate Gemini once when the controller is created
-  private genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY ?? "");
+  private readonly groq = new Groq({
+    apiKey: process.env.GROQ_API_KEY ?? "",
+  });
+
+  constructor(private readonly prisma: PrismaService) {}
 
   @Post("analyze")
   async analyze(@Body() body: AnalyzeRequestDto): Promise<AnalyzeResponseDto> {
     const { question, transcript } = body;
 
-    // Guard: don't call Gemini if we got empty data
     if (!question || !transcript) {
       throw new HttpException(
         "question and transcript are required",
@@ -42,14 +41,14 @@ export class AnalyzeController {
       );
     }
 
-    try {
-      const model = this.genAI.getGenerativeModel({
-        model: "gemini-1.5-flash", // fast and cheap, good for this use case
-      });
+    if (!process.env.GROQ_API_KEY) {
+      throw new HttpException(
+        "GROQ_API_KEY is missing from .env",
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
 
-      // The prompt tells Gemini exactly what format to return.
-      // We ask for JSON so we can parse it reliably on the frontend.
-      // The triple-backtick JSON block at the end is the key instruction.
+    try {
       const prompt = `
 You are an expert technical interview coach reviewing a candidate's spoken answer.
 
@@ -59,7 +58,7 @@ Interview Question:
 Candidate's Transcript:
 "${transcript}"
 
-Evaluate the answer and respond with ONLY a valid JSON object — no explanation, no markdown, no backticks. 
+Evaluate the answer and respond with ONLY a valid JSON object — no explanation, no markdown, no backticks.
 The JSON must match this exact shape:
 {
   "score": <number from 1 to 10>,
@@ -77,17 +76,33 @@ Keep improvements concise and actionable (one sentence each).
 The exampleAnswer should sound like a confident candidate speaking out loud.
       `.trim();
 
-      const result = await model.generateContent(prompt);
-      const raw = result.response.text();
+      const response = await this.groq.chat.completions.create({
+        model: "llama-3.3-70b-versatile",
+        messages: [{ role: "user", content: prompt }],
+      });
 
-      // Parse the JSON Gemini returns.
-      // If Gemini sneaks in markdown fences despite our instructions, strip them.
+      const raw = response.choices[0].message.content ?? "";
       const cleaned = raw.replace(/```json|```/g, "").trim();
-      const parsed: AnalyzeResponseDto = JSON.parse(cleaned);
+      const parsed = JSON.parse(cleaned) as AnalyzeResponseDto;
+
+      if (body.clerkUserId) {
+        await this.prisma.session.create({
+          data: {
+            clerkUserId: body.clerkUserId,
+            question: body.question,
+            transcript: body.transcript,
+            score: parsed.score,
+            improvements: JSON.stringify(parsed.improvements),
+            exampleAnswer: parsed.exampleAnswer,
+            category: body.category ?? "Unknown",
+            difficulty: body.difficulty ?? "Medium",
+          },
+        });
+      }
 
       return parsed;
-    } catch (err) {
-      console.error("Gemini error:", err);
+    } catch (error) {
+      console.error("Groq error:", error);
       throw new HttpException(
         "AI analysis failed",
         HttpStatus.INTERNAL_SERVER_ERROR,
