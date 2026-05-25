@@ -1,0 +1,48 @@
+"use client";
+
+import { useEffect } from "react";
+
+
+
+export function useInterviewAnalysis(
+  videoRef: React.RefObject<HTMLVideoElement | null>
+) {
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+
+
+
+    async function start() {
+      const faceDetector = await getFaceDetector();
+      const poseDetector = await getPoseDetector();
+
+      interval = setInterval(async () => {
+        if (!videoRef.current) return;
+
+        const faces = await faceDetector.estimateFaces(
+          videoRef.current
+        );
+
+        const poses = await poseDetector.estimatePoses(
+          videoRef.current
+        );
+
+        analyzeInterview(faces, poses);
+      }, 200);
+    }
+
+    start();
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, [videoRef]);
+}
+
+function analyzeInterview(faces: any, poses: any) {
+    throw new Error("Function not implemented.");
+}
+function getFaceDetector() {
+    throw new Error("Function not implemented.");
+}
+

@@ -2,12 +2,23 @@
 
 :root {
   --background: #050816;
-  --foreground: #2b2c2d;
+  --foreground: #f8fafc;
+  --surface: rgba(15, 23, 42, 0.8);
+  --surface-muted: rgba(255, 255, 255, 0.08);
+}
+
+html[data-theme="light"] {
+  --background: #f4f8ff;
+  --foreground: #0f172a;
+  --surface: rgba(255, 255, 255, 0.86);
+  --surface-muted: rgba(15, 23, 42, 0.08);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
   --font-sans: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
   --font-mono: "SFMono-Regular", "Consolas", "Liberation Mono", monospace;
 }
@@ -24,4 +35,9 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
 }
