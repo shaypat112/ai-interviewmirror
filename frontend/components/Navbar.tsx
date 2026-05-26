@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { SignInButton, UserButton, useUser } from "@clerk/nextjs";
+import Link from "next/link";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 export function Navbar() {
@@ -11,7 +11,7 @@ export function Navbar() {
     <nav className="border-b border-border bg-background/90 px-6 py-4 backdrop-blur">
       <div className="mx-auto flex w-full max-w-6xl items-center justify-between">
         <Link href="/" className="text-lg font-semibold text-primary">
-          InterviewAI
+          MirAI
         </Link>
         <div className="flex items-center gap-2">
           <ThemeToggle />

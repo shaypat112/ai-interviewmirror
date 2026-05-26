@@ -1,9 +1,9 @@
 "use client";
-import * as React from "react";
-import Link from "next/link";
 import { SignInButton, UserButton, useUser } from "@clerk/nextjs";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
+import Link from "next/link";
+
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 export function Navbar() {
   const { isSignedIn } = useUser();
@@ -14,7 +14,7 @@ export function Navbar() {
           href="/"
           className="text-xl font-bold tracking-tight text-primary"
         >
-          InterviewAI
+          MirAI
         </Link>
         <div className="flex items-center gap-2">
           <ThemeToggle />

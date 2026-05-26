@@ -9,9 +9,9 @@
 // - Clerk auth on the right
 // - Active route highlighted
 
+import { SignInButton, SignUpButton, UserButton, useUser } from "@clerk/nextjs";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { SignInButton, SignUpButton, UserButton, useUser } from "@clerk/nextjs";
 
 const navLinks = [
   { href: "/", label: "Practice" },

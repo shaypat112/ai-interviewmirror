@@ -1,18 +1,18 @@
 // app/layout.tsx
 
-import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
+import type { Metadata } from "next";
 import { Navbar } from "@/components/ui/navbar";
 import "./globals.css";
+
 import { Geist } from "next/font/google";
-import { cn } from "@/lib/utils";
 import { AppThemeProvider } from "@/components/AppThemeProvider";
-import { Link } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
-  title: "InterviewAI — Practice Like It's Real",
+  title: "MirAI",
   description:
     "Record yourself answering interview questions and get AI feedback on your performance.",
 };

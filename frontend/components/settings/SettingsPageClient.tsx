@@ -3,15 +3,15 @@
 import { useClerk, useUser } from "@clerk/nextjs";
 import { useEffect, useState } from "react";
 import {
-  categories,
   type Category,
+  categories,
   type Difficulty,
 } from "@/app/data/questions";
-import { API_BASE_URL, DARK_MODE_STORAGE_KEY } from "@/lib/config";
-import { Switch } from "@/components/ui/switch";
-import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
+
 import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
+import { API_BASE_URL, DARK_MODE_STORAGE_KEY } from "@/lib/config";
 
 interface PreferencesResponse {
   clerkUserId: string;
@@ -326,9 +326,6 @@ export function SettingsPageClient({ clerkUserId }: SettingsPageClientProps) {
       >
         {/* Page header */}
         <div style={{ marginBottom: "16px" }}>
-          <p className="label" style={{ marginBottom: "8px" }}>
-            Your account
-          </p>
           <h1
             style={{
               fontSize: "32px",
@@ -420,7 +417,7 @@ export function SettingsPageClient({ clerkUserId }: SettingsPageClientProps) {
 
         {/* Interview preferences */}
         <Section
-          title="Interview Preferences"
+          title=" Subject Preferences"
           description="These settings apply to the Practice and Simulate pages."
         >
           <div

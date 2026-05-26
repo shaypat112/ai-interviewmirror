@@ -1,54 +1,57 @@
-// components/interview/ConfidencePosturePanel.tsx
-//
-// Displays live scores while recording and final scores after stopping.
-// Receives all data as props — zero logic in here.
+"use client";
 
+import { Activity, ShieldAlert, Sparkles, UserCheck } from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { ConfidenceBreakdown } from "@/hooks/useConfidenceScore";
 import type { PostureBreakdown } from "@/hooks/usePostureScore";
 
 interface ConfidencePosturePanelProps {
-  // Live scores (shown during recording)
   liveConfidence: ConfidenceBreakdown | null;
   livePosture: PostureBreakdown | null;
-  // Final averaged scores (shown after recording stops)
   finalConfidence: ConfidenceBreakdown | null;
   finalPosture: PostureBreakdown | null;
-  // State flags
   isRecording: boolean;
   confidenceReady: boolean;
   postureReady: boolean;
   postureLoading: boolean;
 }
 
-// Converts a 0-100 number to a Tailwind color class
-function scoreToColor(score: number): string {
+// Converts a 0-100 score to a Tailwind semantic text color class
+function getScoreTextColor(score: number): string {
   if (score >= 75) return "text-emerald-400";
   if (score >= 50) return "text-amber-400";
   return "text-rose-400";
 }
 
-// A single metric row: label on left, score bar + number on right
-function MetricRow({ label, score }: { label: string; score: number }) {
-  const color = scoreToColor(score);
-  const barColor =
-    score >= 75
-      ? "bg-emerald-500"
-      : score >= 50
-        ? "bg-amber-500"
-        : "bg-rose-500";
+// Custom progress-bar style selector to override standard background colors
+function getProgressBarColor(score: number): string {
+  if (score >= 75) return "[&>div]:bg-emerald-500 bg-emerald-500/10";
+  if (score >= 50) return "[&>div]:bg-amber-500 bg-amber-500/10";
+  return "[&>div]:bg-rose-500 bg-rose-500/10";
+}
 
+// Refactored Metric Row utilizing Shadcn Progress
+function MetricRow({ label, score }: { label: string; score: number }) {
   return (
-    <div className="flex items-center gap-3">
-      <span className="w-32 shrink-0 text-xs text-slate-400">{label}</span>
-      <div className="flex-1 h-1.5 rounded-full bg-white/10 overflow-hidden">
-        {/* Bar fills proportionally to the score */}
-        <div
-          className={`h-full rounded-full transition-all duration-500 ${barColor}`}
-          style={{ width: `${score}%` }}
-        />
-      </div>
+    <div className="flex items-center gap-4">
+      <span className="w-32 shrink-0 text-xs text-slate-400 font-medium">
+        {label}
+      </span>
+      <Progress
+        value={score}
+        className={`h-2 flex-1 rounded-full ${getProgressBarColor(score)}`}
+      />
       <span
-        className={`w-8 text-right text-xs font-mono font-semibold ${color}`}
+        className={`w-8 text-right text-xs font-mono font-bold ${getScoreTextColor(score)}`}
       >
         {score}
       </span>
@@ -56,13 +59,16 @@ function MetricRow({ label, score }: { label: string; score: number }) {
   );
 }
 
-// Big score circle for the overall number
+// Refactored Score Circle Widget
 function ScoreCircle({ score, label }: { score: number; label: string }) {
-  const color = scoreToColor(score);
   return (
-    <div className="flex flex-col items-center">
-      <span className={`text-3xl font-bold font-mono ${color}`}>{score}</span>
-      <span className="text-xs text-slate-500 mt-1">{label}</span>
+    <div className="flex flex-col items-center justify-center text-center p-2">
+      <span
+        className={`text-3xl font-extrabold font-mono tracking-tight ${getScoreTextColor(score)}`}
+      >
+        {score}
+      </span>
+      <span className="text-xs font-medium text-slate-500 mt-1">{label}</span>
     </div>
   );
 }
@@ -77,88 +83,108 @@ export function ConfidencePosturePanel({
   postureReady,
   postureLoading,
 }: ConfidencePosturePanelProps) {
-  // Nothing to show yet
+  // Guard clause to hide the panel entirely if context data is completely absent
   if (!confidenceReady && !postureReady && !postureLoading) return null;
 
-  // Use live scores during recording, final scores after
   const confidence = isRecording ? liveConfidence : finalConfidence;
   const posture = isRecording ? livePosture : finalPosture;
-
-  const sectionTitle = isRecording ? "Live Analysis" : "Session Analysis";
+  const sectionTitle = isRecording ? "Live Analysis" : "Session Summary";
 
   return (
-    <div className="rounded-3xl border border-white/10 bg-white/5 p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-white">{sectionTitle}</h2>
+    <Card className="border-white/10 bg-slate-900/60 backdrop-blur-sm">
+      {/* Structural Header Layout */}
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+        <div className="space-y-1">
+          <CardTitle className="text-lg font-semibold tracking-tight text-white">
+            {sectionTitle}
+          </CardTitle>
+        </div>
         {isRecording && (
-          <span className="flex items-center gap-2 text-xs text-slate-400">
+          <div className="flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-400">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            analyzing
-          </span>
+            <Activity className="h-3 w-3 inline mr-0.5 animate-pulse" />
+            Active Feed
+          </div>
         )}
-      </div>
+      </CardHeader>
 
-      {/* Loading state while models load */}
-      {postureLoading && (
-        <p className="text-xs text-slate-500">Loading posture model...</p>
-      )}
+      <CardContent className="space-y-6">
+        {/* Posture Model Loading States backed by Skeletons */}
+        {postureLoading && (
+          <div className="flex items-center gap-3 rounded-lg border border-slate-800 bg-slate-900/40 p-3">
+            <Skeleton className="h-4 w-4 rounded-full bg-slate-700" />
+            <span className="text-xs text-slate-400 animate-pulse">
+              Initializing hardware mapping & posture node configurations...
+            </span>
+          </div>
+        )}
 
-      {/* Overall scores row */}
-      {(confidence || posture) && (
-        <div className="flex justify-around py-2">
-          {confidence && (
-            <ScoreCircle score={confidence.overall} label="Confidence" />
-          )}
-          {posture && <ScoreCircle score={posture.overall} label="Posture" />}
-          {confidence && posture && (
-            <ScoreCircle
-              score={Math.round((confidence.overall + posture.overall) / 2)}
-              label="Combined"
-            />
-          )}
-        </div>
-      )}
+        {/* Global Summary Target Clusters */}
+        {(confidence || posture) && (
+          <div className="grid grid-cols-3 gap-2 rounded-xl border border-white/5 bg-white/[0.02] p-4">
+            {confidence && (
+              <ScoreCircle score={confidence.overall} label="Confidence" />
+            )}
+            {posture && <ScoreCircle score={posture.overall} label="Posture" />}
+            {confidence && posture && (
+              <ScoreCircle
+                score={Math.round((confidence.overall + posture.overall) / 2)}
+                label="Combined Avg"
+              />
+            )}
+          </div>
+        )}
 
-      {/* Divider */}
-      <div className="border-t border-white/10" />
+        {/* Confidence Breakdown Segment */}
+        {confidence && (
+          <div className="space-y-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.15em] text-slate-500 flex items-center gap-1.5">
+              <Sparkles className="h-3.5 w-3.5 text-slate-400" />
+              Confidence Metrics
+            </p>
+            <div className="space-y-2.5">
+              <MetricRow label="Eye Contact" score={confidence.eyeContact} />
+              <MetricRow label="Stability" score={confidence.stability} />
+              <MetricRow label="Presence" score={confidence.presence} />
+            </div>
+          </div>
+        )}
 
-      {/* Confidence breakdown */}
-      {confidence && (
-        <div className="space-y-3">
-          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-            Confidence
-          </p>
-          <MetricRow label="Eye Contact" score={confidence.eyeContact} />
-          <MetricRow label="Stability" score={confidence.stability} />
-          <MetricRow label="Presence" score={confidence.presence} />
-        </div>
-      )}
+        {confidence && posture && <Separator className="bg-white/5" />}
 
-      {/* Posture breakdown */}
-      {posture && (
-        <div className="space-y-3">
-          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-            Posture
-          </p>
-          <MetricRow label="Shoulder Level" score={posture.shoulderLevel} />
-          <MetricRow label="Shoulders Open" score={posture.shoulderWidth} />
-          <MetricRow label="Head Straight" score={posture.headTilt} />
-        </div>
-      )}
+        {/* Posture Breakdown Segment */}
+        {posture && (
+          <div className="space-y-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.15em] text-slate-500 flex items-center gap-1.5">
+              <UserCheck className="h-3.5 w-3.5 text-slate-400" />
+              Posture Diagnostics
+            </p>
+            <div className="space-y-2.5">
+              <MetricRow label="Shoulder Level" score={posture.shoulderLevel} />
+              <MetricRow label="Shoulders Open" score={posture.shoulderWidth} />
+              <MetricRow label="Head Alignment" score={posture.headTilt} />
+            </div>
+          </div>
+        )}
 
-      {/* Tip shown after recording */}
-      {!isRecording && finalPosture && finalConfidence && (
-        <p className="text-xs text-slate-500 leading-5">
-          {finalConfidence.eyeContact < 60
-            ? "💡 Try to look directly at the camera lens, not at your own face on screen."
-            : finalPosture.shoulderWidth < 60
-              ? "💡 Sit back slightly and open your shoulders — it projects more confidence."
-              : finalPosture.shoulderLevel < 60
-                ? "💡 Watch for raised shoulders — it signals tension. Try relaxing them down."
-                : "✅ Great body language overall. Keep it up!"}
-        </p>
-      )}
-    </div>
+        {/* Feedback Section with Contextual Posture Insights */}
+        {!isRecording && finalPosture && finalConfidence && (
+          <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4">
+            <div className="flex items-start gap-2.5 text-xs leading-relaxed text-slate-400">
+              <ShieldAlert className="h-4 w-4 shrink-0 text-sky-400 mt-0.5" />
+              <div>
+                {finalConfidence.eyeContact < 60
+                  ? "Look directly at the camera lens instead of your own preview image to project a strong presence."
+                  : finalPosture.shoulderWidth < 60
+                    ? "Sit back slightly and square your posture to maximize screen coverage and look relaxed."
+                    : finalPosture.shoulderLevel < 60
+                      ? "Keep your shoulder heights even. Dropping or lifting on one side signals muscle strain or nervousness."
+                      : "Outstanding presence. Posture alignment and camera eye contact are fully optimized."}
+              </div>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

@@ -1,26 +1,44 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
 import { useUser } from "@clerk/nextjs";
-import { Category, Difficulty, Question } from "@/app/data/questions";
+import { AlertTriangle, Lightbulb, RefreshCw, RotateCcw } from "lucide-react"; // Nice-to-have icons for action buttons
+import { useEffect, useMemo, useState } from "react";
+import type { Category, Difficulty, Question } from "@/app/data/questions";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 import { useQuestionPicker } from "@/hooks/useQuestionPicker";
 import { API_BASE_URL } from "@/lib/config";
 
 const difficultyStyles: Record<Difficulty, string> = {
-  Easy: "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30",
-  Medium: "bg-amber-500/15 text-amber-400 border border-amber-500/30",
-  Hard: "bg-rose-500/15 text-rose-400 border border-rose-500/30",
+  Easy: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20",
+  Medium:
+    "bg-amber-500/15 text-amber-400 border-amber-500/30 hover:bg-amber-500/20",
+  Hard: "bg-rose-500/15 text-rose-400 border-rose-500/30 hover:bg-rose-500/20",
 };
 
 const categoryStyles: Record<Category, string> = {
-  "Arrays & Hashing": "bg-cyan-500/15 text-cyan-400 border border-cyan-500/30",
+  "Arrays & Hashing":
+    "bg-cyan-500/15 text-cyan-400 border-cyan-500/30 hover:bg-cyan-500/20",
   "Linked Lists":
-    "bg-violet-500/15 text-violet-400 border border-violet-500/30",
-  "Trees & Graphs": "bg-green-500/15 text-green-400 border border-green-500/30",
+    "bg-violet-500/15 text-violet-400 border-violet-500/30 hover:bg-violet-500/20",
+  "Trees & Graphs":
+    "bg-green-500/15 text-green-400 border-green-500/30 hover:bg-green-500/20",
   "Dynamic Programming":
-    "bg-orange-500/15 text-orange-400 border border-orange-500/30",
-  "Sorting & Searching": "bg-sky-500/15 text-sky-400 border border-sky-500/30",
-  Behavioral: "bg-pink-500/15 text-pink-400 border border-pink-500/30",
+    "bg-orange-500/15 text-orange-400 border-orange-500/30 hover:bg-orange-500/20",
+  "Sorting & Searching":
+    "bg-sky-500/15 text-sky-400 border-sky-500/30 hover:bg-sky-500/20",
+  Behavioral:
+    "bg-pink-500/15 text-pink-400 border-pink-500/30 hover:bg-pink-500/20",
 };
 
 interface PreferencesResponse {
@@ -41,7 +59,6 @@ export function QuestionPicker({
   const { user, isSignedIn } = useUser();
   const {
     categories,
-    selectedCategory,
     currentQuestion,
     difficultyFilter,
     setDifficultyFilter,
@@ -87,106 +104,141 @@ export function QuestionPicker({
       return categories;
     }
 
-    return categories.filter((category) => allowedCategories.includes(category));
+    return categories.filter((category) =>
+      allowedCategories.includes(category),
+    );
   }, [allowedCategories, categories]);
 
   return (
-    <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-      <h2 className="text-xl font-semibold text-white">Pick a Category</h2>
-      <p className="mt-1 text-sm text-slate-400">
-        Select a topic and get a random interview question.
-      </p>
+    <div className="space-y-6">
+      {/* Category Selection Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-xl font-semibold text-white">
+            Pick a Category
+          </CardTitle>
+          <CardDescription className="text-slate-400">
+            Select a topic and get a random interview question.
+          </CardDescription>
+        </CardHeader>
 
-      <div className="mt-5">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-          Difficulty
-        </p>
-        <div className="mt-3 flex flex-wrap gap-3">
-          {(["All", "Easy", "Medium", "Hard"] as const).map((option) => (
-            <button
-              key={option}
-              onClick={() => setDifficultyFilter(option)}
-              className={`rounded-full px-4 py-2 text-sm font-medium transition ${
-                difficultyFilter === option
-                  ? "bg-white text-slate-950"
-                  : "bg-white/10 text-slate-300 hover:bg-white/20"
-              }`}
-            >
-              {option}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="mt-5 flex flex-wrap gap-3">
-        {visibleCategories.map((category) => (
-          <button
-            key={category}
-            onClick={() => pickRandomQuestion(category, onQuestionSelect)}
-            className={`rounded-full px-4 py-2 text-sm font-medium transition-all ${categoryStyles[category]} ${
-              selectedCategory === category
-                ? "ring-2 ring-white/40 ring-offset-1 ring-offset-transparent"
-                : "opacity-70 hover:opacity-100"
-            }`}
-          >
-            {category}
-          </button>
-        ))}
-      </div>
-
-      {showHints ? (
-        <p className="mt-4 text-sm text-slate-400">
-          Tip: take a moment to outline your answer and aim for a clear
-          60-to-90-second response.
-        </p>
-      ) : null}
-
-      {noMatchMessage ? (
-        <div className="mt-4 rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4 text-sm text-amber-200">
-          {noMatchMessage}
-        </div>
-      ) : null}
-
-      {currentQuestion ? (
-        <div className="mt-6 rounded-2xl border border-white/10 bg-slate-900/60 p-5">
-          <div className="flex flex-wrap items-center gap-2">
-            <span
-              className={`rounded-full px-3 py-1 text-xs font-medium ${categoryStyles[currentQuestion.category]}`}
-            >
-              {currentQuestion.category}
-            </span>
-            <span
-              className={`rounded-full px-3 py-1 text-xs font-medium ${difficultyStyles[currentQuestion.difficulty]}`}
-            >
-              {currentQuestion.difficulty}
-            </span>
+        <CardContent className="space-y-6">
+          {/* Difficulty Filter Section */}
+          <div className="space-y-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+              Difficulty
+            </p>
+            <div className="flex flex-wrap gap-3">
+              {(["All", "Easy", "Medium", "Hard"] as const).map((option) => (
+                <Button
+                  key={option}
+                  variant={
+                    difficultyFilter === option ? "default" : "secondary"
+                  }
+                  onClick={() => setDifficultyFilter(option)}
+                  className="rounded-full"
+                  size="sm"
+                >
+                  {option}
+                </Button>
+              ))}
+            </div>
           </div>
 
-          <p className="mt-4 text-base leading-7 text-slate-100">
-            {currentQuestion.question}
-          </p>
+          <Separator className="bg-white/10" />
 
-          <div className="mt-5 flex gap-3">
-            <button
+          {/* Topic Select Section */}
+          <div className="flex flex-wrap gap-3">
+            {visibleCategories.map((category) => (
+              <Button
+                key={category}
+                variant="outline"
+                onClick={() => pickRandomQuestion(category, onQuestionSelect)}
+                className={`rounded-full ${categoryStyles[category]}`}
+              >
+                {category}
+              </Button>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Hints Banner using Shadcn Alert Component */}
+      {showHints && (
+        <Alert className="border-slate-800 bg-slate-900/40 text-slate-300">
+          <Lightbulb className="h-4 w-4 text-amber-400" />
+          <AlertTitle className="text-slate-200 font-medium">
+            Interview Tip
+          </AlertTitle>
+          <AlertDescription className="text-slate-400">
+            Take a moment to outline your answer and aim for a clear
+            60-to-90-second response.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* No Match Warning State using Shadcn Alert Component */}
+      {noMatchMessage && (
+        <Alert
+          variant="destructive"
+          className="border-amber-500/20 bg-amber-500/10 text-amber-200"
+        >
+          <AlertTriangle className="h-4 w-4 text-amber-400" />
+          <AlertTitle>No Match Found</AlertTitle>
+          <AlertDescription>{noMatchMessage}</AlertDescription>
+        </Alert>
+      )}
+
+      {/* Active Question Display Card */}
+      {currentQuestion && (
+        <Card className="border-white/10 bg-slate-900/60 transition-all duration-300">
+          <CardHeader>
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge
+                variant="outline"
+                className={`rounded-full ${categoryStyles[currentQuestion.category]}`}
+              >
+                {currentQuestion.category}
+              </Badge>
+              <Badge
+                variant="outline"
+                className={`rounded-full ${difficultyStyles[currentQuestion.difficulty]}`}
+              >
+                {currentQuestion.difficulty}
+              </Badge>
+            </div>
+          </CardHeader>
+
+          <CardContent>
+            <p className="text-base leading-7 text-slate-100 font-medium">
+              {currentQuestion.question}
+            </p>
+          </CardContent>
+
+          <CardFooter className="flex gap-3">
+            <Button
               onClick={() =>
                 pickRandomQuestion(currentQuestion.category, onQuestionSelect)
               }
-              className="rounded-full bg-white/10 px-4 py-2 text-sm font-medium text-white hover:bg-white/20"
+              className="gap-2"
             >
+              <RefreshCw className="h-4 w-4" />
               New Question
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="ghost"
               onClick={() => {
                 reset();
                 onQuestionClear?.();
               }}
-              className="rounded-full px-4 py-2 text-sm font-medium text-slate-400 hover:text-white"
+              className="text-slate-400 hover:text-white gap-2"
             >
+              <RotateCcw className="h-4 w-4" />
               Reset
-            </button>
-          </div>
-        </div>
-      ) : null}
+            </Button>
+          </CardFooter>
+        </Card>
+      )}
     </div>
   );
 }

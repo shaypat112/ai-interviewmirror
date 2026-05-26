@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { API_BASE_URL } from "@/lib/config";
 import {
   Table,
   TableBody,
@@ -10,6 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { API_BASE_URL } from "@/lib/config";
 
 interface SessionRecord {
   id: string;
@@ -164,9 +164,6 @@ export function HistoryPageClient({ clerkUserId }: HistoryPageClientProps) {
       <div style={{ maxWidth: "1024px", margin: "0 auto" }}>
         {/* Page header */}
         <div style={{ marginBottom: "32px" }} className="animate-fade-in">
-          <p className="label" style={{ marginBottom: "8px" }}>
-            Your progress
-          </p>
           <h1
             style={{
               fontSize: "32px",
@@ -178,15 +175,6 @@ export function HistoryPageClient({ clerkUserId }: HistoryPageClientProps) {
           >
             Session History
           </h1>
-          <p
-            style={{
-              marginTop: "8px",
-              fontSize: "14px",
-              color: "var(--text-2)",
-            }}
-          >
-            Every practice run, scored and saved.
-          </p>
         </div>
 
         {/* Stats row */}
