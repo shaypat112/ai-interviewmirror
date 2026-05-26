@@ -1,16 +1,19 @@
 "use client";
-
+import * as React from "react";
 import Link from "next/link";
 import { SignInButton, UserButton, useUser } from "@clerk/nextjs";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { Button } from "@/components/ui/button";
 
 export function Navbar() {
   const { isSignedIn } = useUser();
-
   return (
-    <nav className="border-b border-border bg-background/90 px-6 py-4 backdrop-blur">
-      <div className="mx-auto flex w-full max-w-6xl items-center justify-between">
-        <Link href="/" className="text-lg font-semibold text-primary">
+    <nav className="sticky top-0 z-30 w-full border-b border-border/60 bg-background/80 backdrop-blur-lg shadow-sm">
+      <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-3">
+        <Link
+          href="/"
+          className="text-xl font-bold tracking-tight text-primary"
+        >
           InterviewAI
         </Link>
         <div className="flex items-center gap-2">
@@ -19,13 +22,13 @@ export function Navbar() {
             <>
               <Link
                 href="/history"
-                className="text-sm text-muted-foreground hover:text-primary"
+                className="text-muted-foreground hover:text-primary transition-colors px-2 py-1 rounded-md text-sm font-medium"
               >
                 History
               </Link>
               <Link
                 href="/settings"
-                className="text-sm text-muted-foreground hover:text-primary"
+                className="text-muted-foreground hover:text-primary transition-colors px-2 py-1 rounded-md text-sm font-medium"
               >
                 Settings
               </Link>
@@ -33,9 +36,9 @@ export function Navbar() {
             </>
           ) : (
             <SignInButton mode="modal">
-              <button className="rounded-full bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-blue-700 transition-colors">
+              <Button variant="outline" className="font-semibold px-4 py-2">
                 Sign In
-              </button>
+              </Button>
             </SignInButton>
           )}
         </div>

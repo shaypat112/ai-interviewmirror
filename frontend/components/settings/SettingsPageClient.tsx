@@ -8,6 +8,10 @@ import {
   type Difficulty,
 } from "@/app/data/questions";
 import { API_BASE_URL, DARK_MODE_STORAGE_KEY } from "@/lib/config";
+import { Switch } from "@/components/ui/switch";
+import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
 
 interface PreferencesResponse {
   clerkUserId: string;
@@ -23,9 +27,206 @@ interface SettingsPageClientProps {
 
 const DIFFICULTIES: Difficulty[] = ["Easy", "Medium", "Hard"];
 
+// ── Small reusable section wrapper ─────────────────────────────
+function Section({
+  title,
+  description,
+  children,
+  danger = false,
+}: {
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+  danger?: boolean;
+}) {
+  return (
+    <div
+      style={{
+        background: danger ? "var(--red-dim)" : "var(--surface-1)",
+        border: `1px solid ${danger ? "rgba(239,68,68,0.25)" : "var(--border)"}`,
+        borderRadius: "20px",
+        padding: "24px",
+      }}
+    >
+      <h2
+        style={{
+          fontSize: "15px",
+          fontWeight: 600,
+          color: "var(--text-1)",
+          letterSpacing: "-0.02em",
+          marginBottom: description ? "6px" : "20px",
+        }}
+      >
+        {title}
+      </h2>
+      {description && (
+        <p
+          style={{
+            fontSize: "13px",
+            color: "var(--text-2)",
+            marginBottom: "20px",
+            lineHeight: 1.6,
+          }}
+        >
+          {description}
+        </p>
+      )}
+      {children}
+    </div>
+  );
+}
+
+// ── Difficulty pill button ─────────────────────────────────────
+function DifficultyPill({
+  value,
+  selected,
+  onClick,
+}: {
+  value: Difficulty;
+  selected: boolean;
+  onClick: () => void;
+}) {
+  const colors: Record<Difficulty, { active: string; idle: string }> = {
+    Easy: {
+      active:
+        "background:var(--green-dim);color:var(--green);border:1px solid rgba(34,197,94,0.3)",
+      idle: "",
+    },
+    Medium: {
+      active:
+        "background:var(--yellow-dim);color:var(--yellow);border:1px solid rgba(245,158,11,0.3)",
+      idle: "",
+    },
+    Hard: {
+      active:
+        "background:var(--red-dim);color:var(--red);border:1px solid rgba(239,68,68,0.3)",
+      idle: "",
+    },
+  };
+
+  // Parse inline style string into object for React
+  function parseStyle(s: string): React.CSSProperties {
+    return Object.fromEntries(
+      s
+        .split(";")
+        .filter(Boolean)
+        .map((p) => {
+          const [k, v] = p.split(":");
+          // Convert kebab-case to camelCase
+          const key = k.trim().replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+          return [key, v.trim()];
+        }),
+    );
+  }
+
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        padding: "6px 16px",
+        borderRadius: "99px",
+        fontSize: "13px",
+        fontWeight: 500,
+        cursor: "pointer",
+        border: "1px solid var(--border)",
+        background: selected ? undefined : "var(--surface-2)",
+        color: selected ? undefined : "var(--text-2)",
+        transition: "all 0.15s ease",
+        ...(selected ? parseStyle(colors[value].active) : {}),
+      }}
+    >
+      {value}
+    </button>
+  );
+}
+
+// ── Category chip ──────────────────────────────────────────────
+function CategoryChip({
+  value,
+  selected,
+  onClick,
+}: {
+  value: Category;
+  selected: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        padding: "5px 14px",
+        borderRadius: "99px",
+        fontSize: "12px",
+        fontWeight: 500,
+        cursor: "pointer",
+        border: selected
+          ? "1px solid rgba(99,102,241,0.4)"
+          : "1px solid var(--border)",
+        background: selected ? "var(--accent-dim)" : "var(--surface-2)",
+        color: selected ? "var(--accent)" : "var(--text-2)",
+        transition: "all 0.15s ease",
+      }}
+    >
+      {value}
+    </button>
+  );
+}
+
+// ── Toggle row ─────────────────────────────────────────────────
+function ToggleRow({
+  id,
+  label,
+  description,
+  checked,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  description: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: "16px",
+        padding: "14px 16px",
+        borderRadius: "12px",
+        background: "var(--surface-2)",
+        border: "1px solid var(--border)",
+      }}
+    >
+      <div>
+        <Label
+          htmlFor={id}
+          style={{
+            fontSize: "13px",
+            fontWeight: 500,
+            color: "var(--text-1)",
+            cursor: "pointer",
+          }}
+        >
+          {label}
+        </Label>
+        <p
+          style={{ fontSize: "12px", color: "var(--text-3)", marginTop: "2px" }}
+        >
+          {description}
+        </p>
+      </div>
+      <Switch id={id} checked={checked} onCheckedChange={onChange} />
+    </div>
+  );
+}
+
+// ── Main component ─────────────────────────────────────────────
 export function SettingsPageClient({ clerkUserId }: SettingsPageClientProps) {
   const { signOut } = useClerk();
   const { user } = useUser();
+
   const [preferences, setPreferences] = useState<PreferencesResponse>({
     clerkUserId,
     preferredDifficulty: "Medium",
@@ -33,82 +234,62 @@ export function SettingsPageClient({ clerkUserId }: SettingsPageClientProps) {
     showHints: true,
     darkMode: true,
   });
-  const [status, setStatus] = useState<string | null>(null);
+  const [status, setStatus] = useState<{ msg: string; ok: boolean } | null>(
+    null,
+  );
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
 
   useEffect(() => {
-    async function loadPreferences() {
+    async function load() {
       try {
-        const response = await fetch(
+        const res = await fetch(
           `${API_BASE_URL}/api/preferences/${clerkUserId}`,
         );
-
-        if (!response.ok) {
-          throw new Error("Failed to load preferences");
-        }
-
-        const data = (await response.json()) as PreferencesResponse;
+        if (!res.ok) throw new Error();
+        const data = (await res.json()) as PreferencesResponse;
         setPreferences(data);
         document.documentElement.dataset.theme = data.darkMode
           ? "dark"
           : "light";
-        window.localStorage.setItem(
-          DARK_MODE_STORAGE_KEY,
-          String(data.darkMode),
-        );
+        localStorage.setItem(DARK_MODE_STORAGE_KEY, String(data.darkMode));
       } catch {
-        setStatus("Could not load your saved preferences yet.");
+        setStatus({ msg: "Could not load saved preferences.", ok: false });
       }
     }
-
-    void loadPreferences();
+    void load();
   }, [clerkUserId]);
 
-  function updateCategories(category: Category) {
-    setPreferences((current) => {
-      const exists = current.preferredCategories.includes(category);
-      const preferredCategories = exists
-        ? current.preferredCategories.filter((item) => item !== category)
-        : [...current.preferredCategories, category];
-
-      return {
-        ...current,
-        preferredCategories,
-      };
-    });
+  function updateCategories(cat: Category) {
+    setPreferences((p) => ({
+      ...p,
+      preferredCategories: p.preferredCategories.includes(cat)
+        ? p.preferredCategories.filter((c) => c !== cat)
+        : [...p.preferredCategories, cat],
+    }));
   }
 
-  async function savePreferences() {
+  async function save() {
     try {
       setIsSaving(true);
       setStatus(null);
-
-      const response = await fetch(
+      const res = await fetch(
         `${API_BASE_URL}/api/preferences/${clerkUserId}`,
         {
           method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(preferences),
         },
       );
-
-      if (!response.ok) {
-        throw new Error("Failed to save preferences");
-      }
-
+      if (!res.ok) throw new Error();
       document.documentElement.dataset.theme = preferences.darkMode
         ? "dark"
         : "light";
-      window.localStorage.setItem(
-        DARK_MODE_STORAGE_KEY,
-        String(preferences.darkMode),
-      );
-      setStatus("Preferences saved.");
+      localStorage.setItem(DARK_MODE_STORAGE_KEY, String(preferences.darkMode));
+      setStatus({ msg: "Settings saved successfully.", ok: true });
     } catch {
-      setStatus("Saving failed. Please try again.");
+      setStatus({ msg: "Save failed. Try again.", ok: false });
     } finally {
       setIsSaving(false);
     }
@@ -118,160 +299,254 @@ export function SettingsPageClient({ clerkUserId }: SettingsPageClientProps) {
     try {
       setIsDeleting(true);
       setStatus(null);
-
-      const response = await fetch(
-        `${API_BASE_URL}/api/sessions/${clerkUserId}`,
-        {
-          method: "DELETE",
-        },
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to delete history");
-      }
-
-      setStatus("All session history deleted.");
+      const res = await fetch(`${API_BASE_URL}/api/sessions/${clerkUserId}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error();
+      setStatus({ msg: "Session history deleted.", ok: true });
+      setDeleteConfirm(false);
     } catch {
-      setStatus("Could not delete your history yet.");
+      setStatus({ msg: "Could not delete history.", ok: false });
     } finally {
       setIsDeleting(false);
     }
   }
 
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.16),_transparent_30%),linear-gradient(180deg,_#0a0f1f_0%,_#050816_100%)] px-6 py-12">
-      <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
-        <section className="rounded-3xl border border-white/10 bg-surface p-6">
-          {status ? (
-            <p className="mt-4 text-sm text-cyan-300">{status}</p>
-          ) : null}
-        </section>
+    <main style={{ minHeight: "100vh", padding: "48px 24px" }}>
+      <div
+        style={{
+          maxWidth: "680px",
+          margin: "0 auto",
+          display: "flex",
+          flexDirection: "column",
+          gap: "16px",
+        }}
+        className="animate-fade-in"
+      >
+        {/* Page header */}
+        <div style={{ marginBottom: "16px" }}>
+          <p className="label" style={{ marginBottom: "8px" }}>
+            Your account
+          </p>
+          <h1
+            style={{
+              fontSize: "32px",
+              fontWeight: 600,
+              color: "var(--text-1)",
+              letterSpacing: "-0.04em",
+              lineHeight: 1.1,
+            }}
+          >
+            Settings
+          </h1>
+        </div>
 
-        <section className="rounded-3xl border border-white/10 bg-surface p-6">
-          <h2 className="text-lg font-semibold text-white">
-            Interview preferences
-          </h2>
+        {/* Status toast */}
+        {status && (
+          <div
+            className="animate-fade-in-fast"
+            style={{
+              padding: "12px 16px",
+              borderRadius: "12px",
+              fontSize: "13px",
+              fontWeight: 500,
+              background: status.ok ? "var(--green-dim)" : "var(--red-dim)",
+              color: status.ok ? "var(--green)" : "var(--red)",
+              border: `1px solid ${status.ok ? "rgba(34,197,94,0.2)" : "rgba(239,68,68,0.2)"}`,
+            }}
+          >
+            {status.ok ? "✓ " : "✗ "}
+            {status.msg}
+          </div>
+        )}
 
-          <div className="mt-5">
-            <p className="text-sm font-medium text-slate-200">
-              Default difficulty
-            </p>
-            <div className="mt-3 flex flex-wrap gap-3">
-              {DIFFICULTIES.map((difficulty) => (
-                <label
-                  key={difficulty}
-                  className={`cursor-pointer rounded-full px-4 py-2 text-sm ${
-                    preferences.preferredDifficulty === difficulty
-                      ? "bg-white text-slate-950"
-                      : "bg-white/10 text-slate-300"
-                  }`}
+        {/* Account */}
+        <Section title="Account" description="Your MirAI account details.">
+          <div
+            style={{ display: "flex", flexDirection: "column", gap: "10px" }}
+          >
+            {/* Avatar + name row */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
+                marginBottom: "4px",
+              }}
+            >
+              {user?.imageUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={user.imageUrl}
+                  alt="avatar"
+                  style={{
+                    width: "36px",
+                    height: "36px",
+                    borderRadius: "99px",
+                    border: "1px solid var(--border)",
+                  }}
+                />
+              )}
+              <div>
+                <p
+                  style={{
+                    fontSize: "14px",
+                    fontWeight: 500,
+                    color: "var(--text-1)",
+                  }}
                 >
-                  <input
-                    type="radio"
-                    name="difficulty"
-                    className="sr-only"
-                    checked={preferences.preferredDifficulty === difficulty}
-                    onChange={() =>
-                      setPreferences((current) => ({
-                        ...current,
-                        preferredDifficulty: difficulty,
-                      }))
+                  {user?.fullName ?? "—"}
+                </p>
+                <p style={{ fontSize: "12px", color: "var(--text-3)" }}>
+                  {user?.primaryEmailAddress?.emailAddress ?? "—"}
+                </p>
+              </div>
+            </div>
+
+            <Separator
+              style={{ background: "var(--border)", margin: "4px 0" }}
+            />
+
+            <button
+              onClick={() => void signOut({ redirectUrl: "/" })}
+              className="btn btn-secondary"
+              style={{ alignSelf: "flex-start", fontSize: "13px" }}
+            >
+              Sign out
+            </button>
+          </div>
+        </Section>
+
+        {/* Interview preferences */}
+        <Section
+          title="Interview Preferences"
+          description="These settings apply to the Practice and Simulate pages."
+        >
+          <div
+            style={{ display: "flex", flexDirection: "column", gap: "20px" }}
+          >
+            {/* Difficulty */}
+            <div>
+              <p className="label" style={{ marginBottom: "10px" }}>
+                Default difficulty
+              </p>
+              <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                {DIFFICULTIES.map((d) => (
+                  <DifficultyPill
+                    key={d}
+                    value={d}
+                    selected={preferences.preferredDifficulty === d}
+                    onClick={() =>
+                      setPreferences((p) => ({ ...p, preferredDifficulty: d }))
                     }
                   />
-                  {difficulty}
-                </label>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
 
-          <div className="mt-6">
-            <p className="text-sm font-medium text-slate-200">
-              Preferred categories
-            </p>
-            <div className="mt-3 flex flex-wrap gap-3">
-              {categories.map((category) => (
-                <label
-                  key={category}
-                  className={`cursor-pointer rounded-full px-4 py-2 text-sm ${
-                    preferences.preferredCategories.includes(category)
-                      ? "bg-cyan-400/20 text-cyan-100"
-                      : "bg-white/10 text-slate-300"
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    className="sr-only"
-                    checked={preferences.preferredCategories.includes(category)}
-                    onChange={() => updateCategories(category)}
-                  />
-                  {category}
-                </label>
-              ))}
-            </div>
-          </div>
-        </section>
+            <Separator style={{ background: "var(--border)" }} />
 
-        <section className="rounded-3xl border border-white/10 bg-surface p-6">
-          <h2 className="text-lg font-semibold text-white">Appearance</h2>
-
-          <label className="mt-5 flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 p-4">
+            {/* Categories */}
             <div>
-              <p className="text-sm font-medium text-white">Dark mode</p>
-              <p className="text-sm text-slate-400">
-                Toggle the app between the dark and light theme.
+              <p className="label" style={{ marginBottom: "10px" }}>
+                Preferred categories
+                <span
+                  style={{
+                    color: "var(--text-3)",
+                    marginLeft: "6px",
+                    fontWeight: 400,
+                    textTransform: "none",
+                    letterSpacing: 0,
+                  }}
+                >
+                  (leave empty for all)
+                </span>
               </p>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                {categories.map((cat) => (
+                  <CategoryChip
+                    key={cat}
+                    value={cat}
+                    selected={preferences.preferredCategories.includes(cat)}
+                    onClick={() => updateCategories(cat)}
+                  />
+                ))}
+              </div>
             </div>
-            <input
-              type="checkbox"
-              checked={preferences.darkMode}
-              onChange={(event) =>
-                setPreferences((current) => ({
-                  ...current,
-                  darkMode: event.target.checked,
-                }))
-              }
+
+            <Separator style={{ background: "var(--border)" }} />
+
+            {/* Show hints */}
+            <ToggleRow
+              id="hints"
+              label="Show hints on question cards"
+              description="Display tips and STAR format reminders while answering."
+              checked={preferences.showHints}
+              onChange={(v) => setPreferences((p) => ({ ...p, showHints: v }))}
             />
-          </label>
-        </section>
-
-        <section className="rounded-3xl border border-white/10 bg-surface p-6">
-          <h2 className="text-lg font-semibold text-white">Account</h2>
-          <div className="mt-5 space-y-3 text-sm text-slate-300">
-            <p>Name: {user?.fullName ?? "No name available"}</p>
-            <p>
-              Email:{" "}
-              {user?.primaryEmailAddress?.emailAddress ?? "No email available"}
-            </p>
           </div>
-          <button
-            onClick={() => void signOut({ redirectUrl: "/" })}
-            className="mt-5 rounded-full bg-white/10 px-4 py-2 text-sm font-medium text-white"
-          >
-            Sign out
-          </button>
-        </section>
+        </Section>
 
-        <section className="rounded-3xl border border-rose-500/20 bg-rose-500/10 p-6">
-          <h2 className="text-lg font-semibold text-white">Danger zone</h2>
-          <p className="mt-2 text-sm text-rose-100/80">
-            Delete all saved interview sessions from your history.
-          </p>
-          <button
-            onClick={() => void deleteHistory()}
-            disabled={isDeleting}
-            className="mt-5 rounded-full bg-rose-500 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-          >
-            {isDeleting ? "Deleting..." : "Delete all my session history"}
-          </button>
-        </section>
-
+        {/* Save button */}
         <button
-          onClick={() => void savePreferences()}
+          onClick={() => void save()}
           disabled={isSaving}
-          className="self-start rounded-full bg-cyan-400 px-5 py-3 text-sm font-semibold text-slate-950 disabled:opacity-50"
+          className="btn btn-primary"
+          style={{
+            alignSelf: "flex-start",
+            padding: "10px 24px",
+            fontSize: "13px",
+          }}
         >
           {isSaving ? "Saving..." : "Save settings"}
         </button>
+
+        {/* Danger zone */}
+        <Section
+          title="Danger Zone"
+          description="Permanently delete all your saved interview sessions. This cannot be undone."
+          danger
+        >
+          {!deleteConfirm ? (
+            <button
+              onClick={() => setDeleteConfirm(true)}
+              className="btn btn-danger"
+              style={{ fontSize: "13px" }}
+            >
+              Delete all session history
+            </button>
+          ) : (
+            // Two-step confirm so users don't delete by accident
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "10px",
+                flexWrap: "wrap",
+              }}
+            >
+              <p style={{ fontSize: "13px", color: "var(--text-2)" }}>
+                Are you sure? This is permanent.
+              </p>
+              <button
+                onClick={() => void deleteHistory()}
+                disabled={isDeleting}
+                className="btn btn-danger"
+                style={{ fontSize: "13px" }}
+              >
+                {isDeleting ? "Deleting..." : "Yes, delete everything"}
+              </button>
+              <button
+                onClick={() => setDeleteConfirm(false)}
+                className="btn btn-ghost"
+                style={{ fontSize: "13px" }}
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+        </Section>
       </div>
     </main>
   );

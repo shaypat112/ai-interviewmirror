@@ -2,6 +2,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { API_BASE_URL } from "@/lib/config";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 interface SessionRecord {
   id: string;
@@ -19,17 +27,96 @@ interface HistoryPageClientProps {
   clerkUserId: string;
 }
 
-function scoreTone(score: number) {
-  if (score >= 8) {
-    return "bg-emerald-500/15 text-emerald-300";
-  }
+// ── Helpers ────────────────────────────────────────────────────
 
-  if (score >= 5) {
-    return "bg-amber-500/15 text-amber-200";
-  }
+function ScoreBadge({ score }: { score: number }) {
+  const style =
+    score >= 8
+      ? {
+          background: "var(--green-dim)",
+          color: "var(--green)",
+          border: "1px solid rgba(34,197,94,0.2)",
+        }
+      : score >= 5
+        ? {
+            background: "var(--yellow-dim)",
+            color: "var(--yellow)",
+            border: "1px solid rgba(245,158,11,0.2)",
+          }
+        : {
+            background: "var(--red-dim)",
+            color: "var(--red)",
+            border: "1px solid rgba(239,68,68,0.2)",
+          };
 
-  return "bg-rose-500/15 text-rose-300";
+  return (
+    <span
+      className="badge"
+      style={{
+        ...style,
+        fontFamily: "var(--font-mono)",
+        fontWeight: 600,
+        fontSize: "12px",
+      }}
+    >
+      {score}/10
+    </span>
+  );
 }
+
+function DifficultyBadge({ difficulty }: { difficulty: string }) {
+  const style =
+    difficulty === "Easy"
+      ? { background: "var(--green-dim)", color: "var(--green)" }
+      : difficulty === "Medium"
+        ? { background: "var(--yellow-dim)", color: "var(--yellow)" }
+        : { background: "var(--red-dim)", color: "var(--red)" };
+  return (
+    <span className="badge" style={style}>
+      {difficulty}
+    </span>
+  );
+}
+
+function StatCard({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="card" style={{ padding: "20px 24px" }}>
+      <p className="label" style={{ marginBottom: "10px" }}>
+        {label}
+      </p>
+      <p
+        style={{
+          fontSize: "28px",
+          fontWeight: 600,
+          color: "var(--text-1)",
+          fontFamily: "var(--font-mono)",
+          letterSpacing: "-0.03em",
+          lineHeight: 1,
+        }}
+      >
+        {value}
+      </p>
+    </div>
+  );
+}
+
+// Skeleton row for loading state
+function SkeletonRow() {
+  return (
+    <TableRow style={{ borderColor: "var(--border)" }}>
+      {[200, 80, 80, 80, 60].map((w, i) => (
+        <TableCell key={i}>
+          <div
+            className="skeleton"
+            style={{ height: "14px", width: `${w}px`, borderRadius: "6px" }}
+          />
+        </TableCell>
+      ))}
+    </TableRow>
+  );
+}
+
+// ── Main Component ─────────────────────────────────────────────
 
 export function HistoryPageClient({ clerkUserId }: HistoryPageClientProps) {
   const [sessions, setSessions] = useState<SessionRecord[]>([]);
@@ -43,168 +130,399 @@ export function HistoryPageClient({ clerkUserId }: HistoryPageClientProps) {
         const response = await fetch(
           `${API_BASE_URL}/api/sessions?clerkUserId=${encodeURIComponent(clerkUserId)}`,
         );
-
-        if (!response.ok) {
-          throw new Error("Failed to load sessions");
-        }
-
+        if (!response.ok) throw new Error("Failed to load sessions");
         const data = (await response.json()) as SessionRecord[];
         setSessions(data);
       } catch {
-        setError("Could not load your session history yet.");
+        setError("Could not load your session history.");
       } finally {
         setIsLoading(false);
       }
     }
-
     void loadSessions();
   }, [clerkUserId]);
 
   const summary = useMemo(() => {
     if (sessions.length === 0) {
-      return {
-        averageScore: 0,
-        totalSessions: 0,
-        topCategory: "No sessions yet",
-      };
+      return { averageScore: "—", totalSessions: 0, topCategory: "—" };
     }
-
-    const averageScore =
-      sessions.reduce((sum, session) => sum + session.score, 0) / sessions.length;
-
-    const categoryCounts = sessions.reduce<Record<string, number>>((acc, session) => {
-      acc[session.category] = (acc[session.category] ?? 0) + 1;
+    const avg = sessions.reduce((s, r) => s + r.score, 0) / sessions.length;
+    const cats = sessions.reduce<Record<string, number>>((acc, s) => {
+      acc[s.category] = (acc[s.category] ?? 0) + 1;
       return acc;
     }, {});
-
-    const topCategory =
-      Object.entries(categoryCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ??
-      "No sessions yet";
-
+    const top = Object.entries(cats).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "—";
     return {
-      averageScore,
+      averageScore: avg.toFixed(1),
       totalSessions: sessions.length,
-      topCategory,
+      topCategory: top,
     };
   }, [sessions]);
 
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.16),_transparent_30%),linear-gradient(180deg,_#0a0f1f_0%,_#050816_100%)] px-6 py-12">
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
-        <section className="grid gap-4 md:grid-cols-3">
-          <div className="rounded-3xl border border-white/10 bg-surface p-5">
-            <p className="text-sm text-slate-400">Average score</p>
-            <p className="mt-2 text-3xl font-semibold text-white">
-              {summary.averageScore.toFixed(1)}
-            </p>
-          </div>
-          <div className="rounded-3xl border border-white/10 bg-surface p-5">
-            <p className="text-sm text-slate-400">Total sessions</p>
-            <p className="mt-2 text-3xl font-semibold text-white">
-              {summary.totalSessions}
-            </p>
-          </div>
-          <div className="rounded-3xl border border-white/10 bg-surface p-5">
-            <p className="text-sm text-slate-400">Most practiced category</p>
-            <p className="mt-2 text-lg font-semibold text-white">
-              {summary.topCategory}
-            </p>
-          </div>
-        </section>
-
-        <section className="rounded-3xl border border-white/10 bg-surface p-6">
-          <h1 className="text-2xl font-semibold text-white">Session history</h1>
-          <p className="mt-2 text-sm text-slate-400">
-            Review earlier practice runs, transcripts, and AI suggestions.
+    <main style={{ minHeight: "100vh", padding: "48px 24px" }}>
+      <div style={{ maxWidth: "1024px", margin: "0 auto" }}>
+        {/* Page header */}
+        <div style={{ marginBottom: "32px" }} className="animate-fade-in">
+          <p className="label" style={{ marginBottom: "8px" }}>
+            Your progress
           </p>
+          <h1
+            style={{
+              fontSize: "32px",
+              fontWeight: 600,
+              color: "var(--text-1)",
+              letterSpacing: "-0.04em",
+              lineHeight: 1.1,
+            }}
+          >
+            Session History
+          </h1>
+          <p
+            style={{
+              marginTop: "8px",
+              fontSize: "14px",
+              color: "var(--text-2)",
+            }}
+          >
+            Every practice run, scored and saved.
+          </p>
+        </div>
 
-          {isLoading ? (
-            <p className="mt-6 text-sm text-slate-400">Loading history...</p>
-          ) : error ? (
-            <p className="mt-6 text-sm text-rose-300">{error}</p>
-          ) : sessions.length === 0 ? (
-            <p className="mt-6 text-sm text-slate-400">
-              No saved sessions yet. Analyze a signed-in practice answer to add
-              your first one.
-            </p>
-          ) : (
-            <div className="mt-6 space-y-4">
-              {sessions.map((session) => {
-                const expanded = expandedId === session.id;
+        {/* Stats row */}
+        <div
+          className="animate-fade-in"
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(3, 1fr)",
+            gap: "12px",
+            marginBottom: "24px",
+            animationDelay: "0.05s",
+          }}
+        >
+          <StatCard label="Average Score" value={summary.averageScore} />
+          <StatCard label="Total Sessions" value={summary.totalSessions} />
+          <StatCard label="Top Category" value={summary.topCategory} />
+        </div>
 
-                return (
-                  <button
-                    key={session.id}
-                    type="button"
-                    onClick={() =>
-                      setExpandedId(expanded ? null : session.id)
-                    }
-                    className="w-full rounded-2xl border border-white/10 bg-white/5 p-5 text-left transition hover:bg-white/10"
+        {/* Table card */}
+        <div
+          className="animate-fade-in"
+          style={{
+            background: "var(--surface-1)",
+            border: "1px solid var(--border)",
+            borderRadius: "20px",
+            overflow: "hidden",
+            animationDelay: "0.1s",
+          }}
+        >
+          <Table>
+            <TableHeader>
+              <TableRow
+                style={{
+                  borderColor: "var(--border)",
+                  background: "var(--surface-2)",
+                }}
+              >
+                {["Question", "Category", "Difficulty", "Date", "Score"].map(
+                  (h) => (
+                    <TableHead
+                      key={h}
+                      style={{
+                        color: "var(--text-3)",
+                        fontSize: "11px",
+                        fontWeight: 500,
+                        letterSpacing: "0.08em",
+                        textTransform: "uppercase",
+                        padding: "12px 16px",
+                        borderColor: "var(--border)",
+                      }}
+                    >
+                      {h}
+                    </TableHead>
+                  ),
+                )}
+              </TableRow>
+            </TableHeader>
+
+            <TableBody>
+              {/* Loading skeletons */}
+              {isLoading &&
+                Array.from({ length: 4 }).map((_, i) => (
+                  <SkeletonRow key={i} />
+                ))}
+
+              {/* Error */}
+              {!isLoading && error && (
+                <TableRow>
+                  <TableCell
+                    colSpan={5}
+                    style={{ padding: "32px 16px", textAlign: "center" }}
                   >
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div>
-                        <p className="text-base font-medium text-white">
-                          {session.question.length > 80
-                            ? `${session.question.slice(0, 80)}...`
-                            : session.question}
-                        </p>
-                        <p className="mt-2 text-sm text-slate-400">
-                          {session.category} · {session.difficulty} ·{" "}
-                          {new Date(session.createdAt).toLocaleDateString()}
-                        </p>
-                      </div>
-                      <span
-                        className={`rounded-full px-3 py-1 text-sm font-semibold ${scoreTone(
-                          session.score,
-                        )}`}
+                    <p style={{ color: "var(--red)", fontSize: "14px" }}>
+                      {error}
+                    </p>
+                  </TableCell>
+                </TableRow>
+              )}
+
+              {/* Empty state */}
+              {!isLoading && !error && sessions.length === 0 && (
+                <TableRow>
+                  <TableCell
+                    colSpan={5}
+                    style={{ padding: "48px 16px", textAlign: "center" }}
+                  >
+                    <p style={{ color: "var(--text-3)", fontSize: "14px" }}>
+                      No sessions yet. Complete a practice run to see your
+                      history here.
+                    </p>
+                  </TableCell>
+                </TableRow>
+              )}
+
+              {/* Actual rows */}
+              {!isLoading &&
+                !error &&
+                sessions.map((session) => {
+                  const isExpanded = expandedId === session.id;
+                  const parsedImprovements =
+                    typeof session.improvements === "string"
+                      ? JSON.parse(session.improvements)
+                      : session.improvements;
+
+                  return (
+                    <>
+                      {/* Main data row */}
+                      <TableRow
+                        key={session.id}
+                        onClick={() =>
+                          setExpandedId(isExpanded ? null : session.id)
+                        }
+                        style={{
+                          borderColor: "var(--border)",
+                          cursor: "pointer",
+                          background: isExpanded
+                            ? "var(--surface-2)"
+                            : "transparent",
+                          transition: "background 0.15s ease",
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!isExpanded)
+                            e.currentTarget.style.background =
+                              "var(--surface-1)";
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!isExpanded)
+                            e.currentTarget.style.background = "transparent";
+                        }}
                       >
-                        {session.score}/10
-                      </span>
-                    </div>
+                        {/* Question — truncated */}
+                        <TableCell
+                          style={{
+                            padding: "14px 16px",
+                            color: "var(--text-1)",
+                            fontSize: "13px",
+                            maxWidth: "360px",
+                          }}
+                        >
+                          <span
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "8px",
+                            }}
+                          >
+                            {/* Expand chevron */}
+                            <span
+                              style={{
+                                color: "var(--text-3)",
+                                fontSize: "10px",
+                                transition: "transform 0.2s",
+                                transform: isExpanded
+                                  ? "rotate(90deg)"
+                                  : "rotate(0deg)",
+                                flexShrink: 0,
+                              }}
+                            >
+                              ▶
+                            </span>
+                            <span
+                              style={{
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              {session.question.length > 72
+                                ? `${session.question.slice(0, 72)}…`
+                                : session.question}
+                            </span>
+                          </span>
+                        </TableCell>
 
-                    {expanded ? (
-                      <div className="mt-5 space-y-4 border-t border-white/10 pt-5">
-                        <div>
-                          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                            Transcript
-                          </p>
-                          <p className="mt-2 text-sm leading-6 text-slate-300">
-                            {session.transcript}
-                          </p>
-                        </div>
+                        {/* Category */}
+                        <TableCell style={{ padding: "14px 16px" }}>
+                          <span
+                            className="badge badge-accent"
+                            style={{ fontSize: "11px" }}
+                          >
+                            {session.category}
+                          </span>
+                        </TableCell>
 
-                        <div>
-                          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                            Improvements
-                          </p>
-                          <ul className="mt-2 space-y-2">
-                            {session.improvements.map((improvement) => (
-                              <li
-                                key={improvement}
-                                className="text-sm text-slate-300"
-                              >
-                                - {improvement}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
+                        {/* Difficulty */}
+                        <TableCell style={{ padding: "14px 16px" }}>
+                          <DifficultyBadge difficulty={session.difficulty} />
+                        </TableCell>
 
-                        <div>
-                          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                            Example answer
-                          </p>
-                          <p className="mt-2 text-sm leading-6 text-slate-300">
-                            {session.exampleAnswer}
-                          </p>
-                        </div>
-                      </div>
-                    ) : null}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </section>
+                        {/* Date */}
+                        <TableCell
+                          style={{
+                            padding: "14px 16px",
+                            color: "var(--text-3)",
+                            fontSize: "12px",
+                            fontFamily: "var(--font-mono)",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {new Date(session.createdAt).toLocaleDateString(
+                            "en-US",
+                            {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                            },
+                          )}
+                        </TableCell>
+
+                        {/* Score */}
+                        <TableCell style={{ padding: "14px 16px" }}>
+                          <ScoreBadge score={session.score} />
+                        </TableCell>
+                      </TableRow>
+
+                      {/* Expanded detail row */}
+                      {isExpanded && (
+                        <TableRow
+                          key={`${session.id}-expanded`}
+                          style={{ borderColor: "var(--border)" }}
+                        >
+                          <TableCell
+                            colSpan={5}
+                            style={{
+                              padding: "0",
+                              background: "var(--bg-subtle)",
+                              borderTop: "1px solid var(--border)",
+                            }}
+                          >
+                            <div
+                              className="animate-fade-in-fast"
+                              style={{
+                                padding: "24px",
+                                display: "grid",
+                                gridTemplateColumns: "1fr 1fr 1fr",
+                                gap: "24px",
+                              }}
+                            >
+                              {/* Transcript */}
+                              <div>
+                                <p
+                                  className="label"
+                                  style={{ marginBottom: "10px" }}
+                                >
+                                  Your Answer
+                                </p>
+                                <p
+                                  style={{
+                                    fontSize: "12px",
+                                    lineHeight: "1.7",
+                                    color: "var(--text-2)",
+                                  }}
+                                >
+                                  {session.transcript ||
+                                    "No transcript recorded."}
+                                </p>
+                              </div>
+
+                              {/* Improvements */}
+                              <div>
+                                <p
+                                  className="label"
+                                  style={{ marginBottom: "10px" }}
+                                >
+                                  What to Improve
+                                </p>
+                                <ul
+                                  style={{
+                                    listStyle: "none",
+                                    padding: 0,
+                                    margin: 0,
+                                  }}
+                                >
+                                  {parsedImprovements.map(
+                                    (item: string, i: number) => (
+                                      <li
+                                        key={i}
+                                        style={{
+                                          display: "flex",
+                                          gap: "8px",
+                                          fontSize: "12px",
+                                          color: "var(--text-2)",
+                                          marginBottom: "8px",
+                                          lineHeight: "1.5",
+                                        }}
+                                      >
+                                        <span
+                                          style={{
+                                            marginTop: "5px",
+                                            width: "5px",
+                                            height: "5px",
+                                            borderRadius: "99px",
+                                            background: "var(--yellow)",
+                                            flexShrink: 0,
+                                          }}
+                                        />
+                                        {item}
+                                      </li>
+                                    ),
+                                  )}
+                                </ul>
+                              </div>
+
+                              {/* Example answer */}
+                              <div>
+                                <p
+                                  className="label"
+                                  style={{ marginBottom: "10px" }}
+                                >
+                                  Example Answer
+                                </p>
+                                <p
+                                  style={{
+                                    fontSize: "12px",
+                                    lineHeight: "1.7",
+                                    color: "var(--text-2)",
+                                    fontStyle: "italic",
+                                    padding: "12px",
+                                    background: "var(--surface-2)",
+                                    borderRadius: "10px",
+                                    border: "1px solid var(--border)",
+                                  }}
+                                >
+                                  {session.exampleAnswer}
+                                </p>
+                              </div>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </>
+                  );
+                })}
+            </TableBody>
+          </Table>
+        </div>
       </div>
     </main>
   );

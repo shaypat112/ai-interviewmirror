@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/button";
 // This component renders the 4 action buttons.
 // Every onClick and disabled state comes from props — no logic here.
 
@@ -24,39 +25,43 @@ export function ControlButtons({
 }: ControlButtonsProps) {
   return (
     <div className="mt-5 flex flex-wrap gap-3">
-      <button
+      <Button
         onClick={onStartCamera}
         disabled={isCameraReady}
-        className="rounded-full bg-cyan-500 px-5 py-3 text-sm font-medium text-black disabled:opacity-50"
+        variant="secondary"
+        className="font-semibold px-5 py-3"
       >
         {isCameraReady ? "Camera Ready" : "Start Camera"}
-      </button>
+      </Button>
 
-      <button
+      <Button
         onClick={onStartRecording}
         disabled={!isCameraReady || isRecording}
-        className="rounded-full bg-emerald-500 px-5 py-3 text-sm font-medium text-black disabled:opacity-50"
+        variant="default"
+        className="bg-emerald-600 text-white hover:bg-emerald-700 font-semibold px-5 py-3"
       >
         Start Recording
-      </button>
+      </Button>
 
-      <button
+      <Button
         onClick={onStopRecording}
         disabled={!isRecording}
-        className="rounded-full bg-rose-500 px-5 py-3 text-sm font-medium text-white disabled:opacity-50"
+        variant="destructive"
+        className="font-semibold px-5 py-3"
       >
         Stop Recording
-      </button>
+      </Button>
 
       {/* Only shows after a recording exists */}
       {hasRecording && (
-        <button
+        <Button
           onClick={onUpload}
           disabled={isUploading}
-          className="rounded-full bg-white px-5 py-3 text-sm font-semibold text-black disabled:opacity-50"
+          variant="outline"
+          className="font-semibold px-5 py-3"
         >
           {isUploading ? "Uploading..." : "Upload Recording"}
-        </button>
+        </Button>
       )}
     </div>
   );
