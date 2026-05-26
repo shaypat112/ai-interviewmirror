@@ -19,6 +19,9 @@ import { useInterviewerVoice } from "@/hooks/useInterviewerVoice";
 import { SpeakButton } from "./SpeakButton";
 import { useExportPDF } from "@/hooks/useExport";
 import { ExportButton } from "./ExportButton";
+import { useConfidenceScore } from "@/hooks/useConfidenceScore";
+import { usePostureScore } from "@/hooks/usePostureScore";
+import { ConfidencePosturePanel } from "./ConfidencePosturePanel";
 
 interface InterviewRecorderProps {
   activeQuestion: string | null;
@@ -29,6 +32,27 @@ export function InterviewRecorder({
   activeQuestion,
   activeQuestionDetails,
 }: InterviewRecorderProps) {
+  const {
+    loadModel: loadConfidenceModel,
+    startAnalysis: startConfidence,
+    stopAnalysis: stopConfidence,
+    reset: resetConfidence,
+    isReady: confidenceReady,
+    liveScore: liveConfidence,
+    finalScore: finalConfidence,
+  } = useConfidenceScore();
+
+  const {
+    loadModel: loadPostureModel,
+    startAnalysis: startPosture,
+    stopAnalysis: stopPosture,
+    reset: resetPosture,
+    isReady: postureReady,
+    isLoading: postureLoading,
+    livePosture,
+    finalPosture,
+  } = usePostureScore();
+
   const { exportPDF } = useExportPDF();
   const { user } = useUser();
   const [status, setStatus] = useState(
@@ -93,15 +117,18 @@ export function InterviewRecorder({
   async function handleStartCamera() {
     setStatus("Starting camera...");
     const stream = await startCamera();
-
     if (!stream) {
       setStatus(cameraError ?? "Camera failed.");
       return;
     }
-
     setupRecorder(stream);
     setupTranscript();
-    setStatus("Camera is ready. You can start recording.");
+
+    // Load both TF models in parallel after camera is ready
+    // Promise.all runs them at the same time instead of one after the other
+    Promise.all([loadConfidenceModel(), loadPostureModel()]);
+
+    setStatus("Camera ready. Loading analysis models...");
   }
 
   function handleExport() {
@@ -116,12 +143,20 @@ export function InterviewRecorder({
   }
 
   function handleStartRecording() {
-    resetTimer(); // ← add this line
     resetTranscript();
     resetFeedback();
+    resetConfidence();
+    resetPosture();
     startRecording();
     startTranscript();
-    startTimer(); // ← add this line
+    startTimer();
+
+    // videoRef.current is the live <video> element the models analyze
+    if (videoRef.current) {
+      startConfidence(videoRef.current);
+      startPosture(videoRef.current);
+    }
+
     setStatus("Recording in progress...");
   }
 
@@ -129,6 +164,8 @@ export function InterviewRecorder({
     stopRecording();
     stopTranscript();
     stopTimer();
+    stopConfidence();
+    stopPosture();
     setStatus("Wrapping up your recording...");
   }
 
@@ -221,6 +258,16 @@ export function InterviewRecorder({
           <TranscriptPanel transcript={transcript} error={transcriptError} />
         </aside>
       </section>
+      <ConfidencePosturePanel
+        liveConfidence={liveConfidence}
+        livePosture={livePosture}
+        finalConfidence={finalConfidence}
+        finalPosture={finalPosture}
+        isRecording={isRecording}
+        confidenceReady={confidenceReady}
+        postureReady={postureReady}
+        postureLoading={postureLoading}
+      />
 
       <FeedbackPanel
         feedback={feedback}
