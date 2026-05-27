@@ -1,16 +1,13 @@
 "use client";
 
-import { motion, AnimatePresence } from "framer-motion";
-
+import { AnimatePresence, motion } from "framer-motion";
+import { Loader2 } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Card, CardContent } from "@/components/ui/card";
 import { useSimulation } from "@/hooks/useSimulation";
-
 import { SimulationQuestion } from "../components/interview/simulation/SimulationQuestion";
 import { SimulationReport } from "../components/interview/simulation/SimulationReport";
 import { SimulationSetup } from "../components/interview/simulation/SimulationSetup";
-
-import { Card, CardContent } from "@/components/ui/card";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2 } from "lucide-react";
 
 export default function SimulatePage() {
   const {
