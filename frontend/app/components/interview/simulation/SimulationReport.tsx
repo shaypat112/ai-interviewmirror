@@ -256,7 +256,7 @@ export function SimulationReport({
         <button onClick={onReset} className="btn btn-primary">
           Try Again →
         </button>
-        <a href="/" className="btn btn-secondary">
+        <a href="/billing-plan" className="btn btn-secondary">
           Back to Practice
         </a>
       </div>

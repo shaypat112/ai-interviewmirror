@@ -40,7 +40,7 @@ const tiers: PlanTier[] = [
   },
   {
     name: "Pro",
-    price: "$19",
+    price: "$13",
     description:
       "Our most popular tier for active job hunters looking to level up.",
     features: [
@@ -56,7 +56,7 @@ const tiers: PlanTier[] = [
   },
   {
     name: "Premium",
-    price: "$49",
+    price: "$39",
     description:
       "Designed for intensive executive preparation and deep analytics.",
     features: [
@@ -86,7 +86,7 @@ export function PricingCards() {
         >
           {tier.popular && (
             <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-              <Badge className="bg-violet-600 hover:bg-violet-600 text-white gap-1 px-3 py-0.5 rounded-full text-xs font-medium tracking-wide">
+              <Badge className="mt-6 bg-violet-900 hover:bg-violet-600 text-white gap-1 px-3 py-0.5 rounded-full text-xs font-medium tracking-wide">
                 <Sparkles className="h-3 w-3" /> Most Popular
               </Badge>
             </div>
