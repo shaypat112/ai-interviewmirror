@@ -18,7 +18,9 @@ export function usePostureScore() {
   const [isReady, setIsReady] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [livePosture, setLivePosture] = useState<PostureBreakdown | null>(null);
-  const [finalPosture, setFinalPosture] = useState<PostureBreakdown | null>(null);
+  const [finalPosture, setFinalPosture] = useState<PostureBreakdown | null>(
+    null,
+  );
   const [loadError, setLoadError] = useState<string | null>(null);
 
   async function loadModel() {
@@ -27,11 +29,12 @@ export function usePostureScore() {
       setLoadError(null);
 
       // Import from the working package
-      const { PoseLandmarker, FilesetResolver } = await import("@mediapipe/tasks-vision");
+      const { PoseLandmarker, FilesetResolver } =
+        await import("@mediapipe/tasks-vision");
 
       // FilesetResolver fetches the WASM binary that runs the model
       const vision = await FilesetResolver.forVisionTasks(
-        "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision/wasm"
+        "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision/wasm",
       );
 
       detectorRef.current = await PoseLandmarker.createFromOptions(vision, {
@@ -53,66 +56,75 @@ export function usePostureScore() {
     }
   }
 
-  const analyzePosture = useCallback(async (
-    videoEl: HTMLVideoElement
-  ): Promise<PostureBreakdown | null> => {
-    if (!detectorRef.current || videoEl.readyState < 2) return null;
+  const analyzePosture = useCallback(
+    async (videoEl: HTMLVideoElement): Promise<PostureBreakdown | null> => {
+      if (!detectorRef.current || videoEl.readyState < 2) return null;
+      if (videoEl.videoWidth === 0 || videoEl.videoHeight === 0) return null;
 
-    try {
-      // Tasks Vision needs a timestamp for VIDEO mode
-      const result = detectorRef.current.detectForVideo(videoEl, performance.now());
+      const rect = videoEl.getBoundingClientRect();
 
-      if (!result.landmarks || result.landmarks.length === 0) return null;
+      if (rect.width === 0 || rect.height === 0) return null;
 
-      // MediaPipe Pose gives 33 landmarks, normalized 0-1
-      // Key indices:
-      // 0  = nose
-      // 11 = left shoulder
-      // 12 = right shoulder
-      const landmarks = result.landmarks[0];
+      try {
+        // Tasks Vision needs a timestamp for VIDEO mode
+        const result = detectorRef.current.detectForVideo(
+          videoEl,
+          performance.now(),
+        );
 
-      const nose = landmarks[0];
-      const leftShoulder = landmarks[11];
-      const rightShoulder = landmarks[12];
+        if (!result.landmarks || result.landmarks.length === 0) return null;
 
-      if (!leftShoulder || !rightShoulder) return null;
+        // MediaPipe Pose gives 33 landmarks, normalized 0-1
+        // Key indices:
+        // 0  = nose
+        // 11 = left shoulder
+        // 12 = right shoulder
+        const landmarks = result.landmarks[0];
 
-      // ── Shoulder Level (are shoulders even?) ──
-      const shoulderYDiff = Math.abs(leftShoulder.y - rightShoulder.y);
-      const shoulderLevel = Math.round(Math.max(0, 100 - shoulderYDiff * 800));
+        const nose = landmarks[0];
+        const leftShoulder = landmarks[11];
+        const rightShoulder = landmarks[12];
 
-      // ── Head Tilt (is nose centered between shoulders?) ──
-      const shoulderMidX = (leftShoulder.x + rightShoulder.x) / 2;
-      const noseDrift = nose ? Math.abs(nose.x - shoulderMidX) : 0;
-      const headTilt = Math.round(Math.max(0, 100 - noseDrift * 600));
+        if (!leftShoulder || !rightShoulder) return null;
 
-      // ── Shoulder Width (open vs hunched posture?) ──
-      const span = Math.abs(rightShoulder.x - leftShoulder.x);
-      let shoulderWidth: number;
-      if (span >= 0.25 && span <= 0.55) {
-        shoulderWidth = 100;
-      } else if (span < 0.25) {
-        shoulderWidth = Math.round((span / 0.25) * 100);
-      } else {
-        shoulderWidth = Math.round(Math.max(0, 100 - (span - 0.55) * 300));
+        // ── Shoulder Level (are shoulders even?) ──
+        const shoulderYDiff = Math.abs(leftShoulder.y - rightShoulder.y);
+        const shoulderLevel = Math.round(
+          Math.max(0, 100 - shoulderYDiff * 800),
+        );
+
+        // ── Head Tilt (is nose centered between shoulders?) ──
+        const shoulderMidX = (leftShoulder.x + rightShoulder.x) / 2;
+        const noseDrift = nose ? Math.abs(nose.x - shoulderMidX) : 0;
+        const headTilt = Math.round(Math.max(0, 100 - noseDrift * 600));
+
+        // ── Shoulder Width (open vs hunched posture?) ──
+        const span = Math.abs(rightShoulder.x - leftShoulder.x);
+        let shoulderWidth: number;
+        if (span >= 0.25 && span <= 0.55) {
+          shoulderWidth = 100;
+        } else if (span < 0.25) {
+          shoulderWidth = Math.round((span / 0.25) * 100);
+        } else {
+          shoulderWidth = Math.round(Math.max(0, 100 - (span - 0.55) * 300));
+        }
+
+        const overall = Math.round(
+          shoulderLevel * 0.4 + shoulderWidth * 0.35 + headTilt * 0.25,
+        );
+
+        return {
+          overall: Math.min(100, Math.max(0, overall)),
+          shoulderLevel: Math.min(100, Math.max(0, shoulderLevel)),
+          headTilt: Math.min(100, Math.max(0, headTilt)),
+          shoulderWidth: Math.min(100, Math.max(0, shoulderWidth)),
+        };
+      } catch {
+        return null;
       }
-
-      const overall = Math.round(
-        shoulderLevel * 0.40 +
-        shoulderWidth * 0.35 +
-        headTilt * 0.25
-      );
-
-      return {
-        overall: Math.min(100, Math.max(0, overall)),
-        shoulderLevel: Math.min(100, Math.max(0, shoulderLevel)),
-        headTilt: Math.min(100, Math.max(0, headTilt)),
-        shoulderWidth: Math.min(100, Math.max(0, shoulderWidth)),
-      };
-    } catch {
-      return null;
-    }
-  }, []);
+    },
+    [],
+  );
 
   function startAnalysis(videoEl: HTMLVideoElement) {
     if (!isReady) return;
@@ -139,7 +151,9 @@ export function usePostureScore() {
     if (snapshots.length === 0) return;
 
     const avg = (key: keyof PostureBreakdown) =>
-      Math.round(snapshots.reduce((sum, s) => sum + s[key], 0) / snapshots.length);
+      Math.round(
+        snapshots.reduce((sum, s) => sum + s[key], 0) / snapshots.length,
+      );
 
     setFinalPosture({
       overall: avg("overall"),
